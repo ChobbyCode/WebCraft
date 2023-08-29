@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { FirstPersonControls } from "three/examples/jsm/controls/FirstPersonControls"
 import { FBM } from 'three-noise';
 (function () { var script = document.createElement('script'); script.onload = function () { var stats = new Stats(); document.body.appendChild(stats.dom); requestAnimationFrame(function loop() { stats.update(); requestAnimationFrame(loop) }); }; script.src = 'https://mrdoob.github.io/stats.js/build/stats.min.js'; document.head.appendChild(script); })()
 
@@ -20,23 +21,65 @@ const fbm = new FBM({
 
 var grassBlock =
   [
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }), // RIGHT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }), // LEFT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }), // TOP
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }), // BOTTOM
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }), // FRONT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/grass/grass.png"), side: THREE.DoubleSide }) // BACK
+    //Right
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/grass/grass_block_top.png"),
+      side: THREE.DoubleSide,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true
+    }),
+    //Left
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/grass/grass_block_top.png"),
+      side: THREE.DoubleSide,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true
+    }),
+    //Top
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/grass/grass_block_top.png"),
+      side: THREE.DoubleSide,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true
+    }),
+    //Bottom
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/dirt/dirt.png"),
+      side: THREE.DoubleSide,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true
+    }),
+    //Front
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/grass/grass_block_top.png"),
+      side: THREE.DoubleSide,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true
+    }),
+    //Back
+    new THREE.MeshBasicMaterial({
+      map: new THREE.TextureLoader().load("text/grass/grass_block_top.png"),
+      side: THREE.DoubleSide,
+      antialias: false,
+      preserveDrawingBuffer: false,
+      alpha: false
+    })
   ];
 
-var stoneBlock =
-  [
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // RIGHT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // LEFT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // TOP
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // BOTTOM
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // FRONT
-    new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }) // BACK
-  ];
+// var stoneBlock =
+//   [
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // RIGHT
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // LEFT
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // TOP
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // BOTTOM
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }), // FRONT
+//     new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("text/stone/stone.jpg"), side: THREE.DoubleSide }) // BACK
+//   ];
 
 /* Create A Scene & Camera */
 
@@ -51,16 +94,24 @@ document.body.appendChild(renderer.domElement);
 
 /* Controls */
 
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new FirstPersonControls(camera, renderer.domElement);
 
 /* Terrain Gen */
 
-const width = 50;
-const depth = 50;
+const width = 250;
+const depth = 250;
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 
-const grassMeshes = new THREE.InstancedMesh(geometry, grassBlock);
+// Creates a instancing mesh for each block.
+const grassMeshes = new THREE.InstancedMesh(geometry, grassBlock, (width * depth) * 2);
+scene.add(grassMeshes);
+
+// Index variables for the instancing meshes to keep track of what block is what block
+var grassIndex = 0;
+
+//Instanced Rendering
+const grassBlocks = new THREE.Object3D();
 
 for (let x = 0; x < width; x++) {
   for (let z = 0; z < depth; z++) {
@@ -68,55 +119,37 @@ for (let x = 0; x < width; x++) {
     const noise = fbm.get2(pos) * 10;
     const height = (Math.round((noise / 1)) * 1)
 
-    // Add the cube
+    grassBlocks.position.x = x;
+    grassBlocks.position.y = height;
+    grassBlocks.position.z = z;
 
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    grassBlocks.updateMatrix();
+    grassMeshes.setMatrixAt(grassIndex, grassBlocks.matrix);
 
+    grassIndex += 1;
 
-    const cube = new THREE.Mesh(geometry, grassBlock);
-    cube.position.x = x;
-    cube.position.y = height
-    cube.position.z = z;
-    scene.add(cube);
+    grassBlocks.position.x = x;
+    grassBlocks.position.y = height - 1;
+    grassBlocks.position.z = z;
 
-    for (let p = 0; p < (64 + height); p++) {
-      const filler = new THREE.Mesh(geometry, stoneBlock);
-      filler.position.x = x;
-      filler.position.y = 0 - p;
-      filler.position.z = z;
-      scene.add(filler);
-    }
+    grassBlocks.updateMatrix();
+    grassMeshes.setMatrixAt(grassIndex, grassBlocks.matrix);
 
+    grassIndex += 1;
   }
 }
 
-
+/* Setup */
 
 camera.position.z = 5;
-
-var renderDistance = 5;
+camera.position.x = 150;
 
 /* Scene Rendering */
 
 function animate() {
   requestAnimationFrame(animate);
 
-  scene.traverse(function (node) {
-
-    if (node instanceof THREE.Mesh) {
-
-      if (node.position.y - camera.position.y > renderDistance) {
-        node.visible = false;
-      } else if (camera.position.y - node.position.y > renderDistance) {
-        node.visible = false
-      } else {
-        node.visible = true;
-      }
-
-
-    }
-
-  });
+  controls.update(0.6);
 
 
   renderer.render(scene, camera);
